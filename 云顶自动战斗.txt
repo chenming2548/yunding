@@ -1,0 +1,300 @@
+// ==UserScript==
+// @name         云顶修仙队长自动战斗
+// @namespace    https://blog.wingsky.net/
+// @version      0.1
+// @description  仙人南山自动战斗
+// @author       纸鸢
+// @match        http://joucks.cn:3344/
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+
+var cookie = '';
+
+(function() {
+    if(!window.localStorage){
+        alert('不支持这个浏览器，请换成Chrome或者Safari。');
+        return null;
+    }
+    var storage = window.localStorage;
+    var time = storage.getItem("time");
+    if(time == null){
+        time = 8000;
+        storage.setItem("time", time);
+    }
+
+    var start = document.createElement("P");
+    start.appendChild(document.createTextNode("开始战斗"));
+    start.style.lineheight="50px";
+    start.style.color="white";
+    start.style.fontSize="30px";
+    start.style.padding="10px 20px";
+    start.style.background="green";
+    start.style.position="fixed";
+    start.style.right="30px";
+    start.style.top="100px";
+    start.style.zIndex="10000";
+
+    var stop = document.createElement("P");
+    stop.appendChild(document.createTextNode("停止战斗"));
+    stop.style.lineheight="50px";
+    stop.style.color="white";
+    stop.style.fontSize="30px";
+    stop.style.padding="10px 20px";
+    stop.style.background="black";
+    stop.style.position="fixed";
+    stop.style.right="30px";
+    stop.style.top="200px";
+    stop.style.zIndex="10000";
+
+    var startAuto = document.createElement("P");
+    startAuto.appendChild(document.createTextNode("自动吃药"));
+    startAuto.style.lineheight="50px";
+    startAuto.style.color="white";
+    startAuto.style.fontSize="30px";
+    startAuto.style.padding="10px 20px";
+    startAuto.style.background="blue";
+    startAuto.style.position="fixed";
+    startAuto.style.right="30px";
+    startAuto.style.top="300px";
+    startAuto.style.zIndex="10000";
+
+    var notice = document.createElement("DIV");
+    //notice.style.color="white";
+    notice.style.background="darkseagreen";
+    notice.style.fontSize="20px";
+    notice.style.padding="10px 20px";
+    notice.style.position="fixed";
+    notice.style.right="30px";
+    notice.style.top="400px";
+    notice.style.lineheight="30px";
+    notice.style.zIndex = "10000";
+    notice.style.width = "300px";
+
+    var notice_0 = document.createElement("P");
+    notice_0.appendChild(document.createTextNode("Ctrl+Q隐藏/显示"));
+    var notice_1 = document.createElement("P");
+    notice_1.appendChild(document.createTextNode("当前状态：停止中" ));
+    var notice_2 = document.createElement("P");
+    notice_2.appendChild(document.createTextNode("当前时间间隔：" + time + "毫秒"));
+    var notice_3 = document.createElement("P");
+    notice_3.appendChild(document.createTextNode("修改时间间隔"));
+
+    var input1 = document.createElement("input");
+    input1.setAttribute('type', 'text');//输入框的类型
+    input1.setAttribute('name', "man");//输入框的名字
+    input1.setAttribute('id', "mans");//输入框的id
+    var button1 = document.createElement("button");
+    button1.innerHTML = '修改';
+
+    notice.appendChild(notice_0);
+    notice.appendChild(notice_1);
+    notice.appendChild(notice_2);
+    notice.appendChild(notice_3);
+    notice.appendChild(input1);
+    notice.appendChild(button1);
+
+
+    var container = document.querySelector('body');
+    container.appendChild(start);
+    container.appendChild(stop);
+    container.appendChild(startAuto);
+    container.appendChild(notice);
+
+    //绑定点击事件
+    button1.onclick = function () {
+        time = input1.value;
+        storage.setItem("time", time);
+        notice_2.innerText = "当前时间间隔：" + time + "毫秒";
+    };
+
+    var flag = true;
+
+    document.onkeydown = function() {
+
+        var oEvent = window.event;
+        if (oEvent.keyCode == 81 && oEvent.ctrlKey) {
+             console.log("你按下了Ctrl+Q");
+            if(flag == true){
+                start.style.display="none";
+                stop.style.display="none";
+                startAuto.style.display="none";
+                notice.style.display="none";
+                flag = false;
+            }else{
+                start.style.display="";
+                stop.style.display="";
+                startAuto.style.display="";
+                notice.style.display="";
+                flag = true;
+            }
+        }else if (oEvent.keyCode == 84 && oEvent.altKey) {
+            console.log("你按下了ALT+T");
+        }
+    }
+
+    var auto = null;
+
+    start.onclick = function() {
+        notice_1.innerText = "当前状态：战斗中";
+        auto = setInterval(function(){
+            startPerilTeamFunc();
+        },time)
+
+    }
+
+    stop.onclick = function() {
+       notice_1.innerText = "当前状态：停止中";
+       clearInterval(auto)
+    }
+
+    var autoAuto = null;
+    var startAutoFlag = true;
+    startAuto.onclick = function() {
+        if(startAutoFlag){
+            startAuto.innerText = '自动吃药ing';
+            startAutoFlag = false;
+            autoAuto = setInterval(function(){
+                getUserInfo();
+            },time)
+        }else{
+            startAuto.innerText = '自动吃药';
+            startAutoFlag = true;
+            clearInterval(autoAuto)
+        }
+
+    }
+
+})();
+
+//获取当前个人信息
+function getUserInfo() {
+    fetch('http://joucks.cn:3344/api/getUserInfo', {
+        method: "GET",
+        headers: {
+            'Cookie': cookie,
+        },
+    }).then(function (response) {
+        return response.json()
+    }).then(function (res) {
+        var repair_num = res.data.user.repair_num;
+        var next_level_num = res.data.user.next_level_num;
+        if (repair_num > next_level_num) {
+            //upgradeUserLevel();
+        }
+        console.log(`修为点` + repair_num);
+        console.log(`当前体力` + res.data.user.health_num);
+        if(res.data.user.health_num<400){
+            getUserGoods();
+        }
+    })
+}
+
+function getUserGoods() {
+     fetch("http://joucks.cn:3344/api/getUserGoods", {
+        method: "GET",
+        headers: {
+            'Cookie': cookie,
+        }
+    }).then(function (response) {
+        return response.json()
+    }).then(function (res) {
+         var pages = res.pages;
+         var redFlag = true;
+         for(var j = 1; j < pages + 1; j++){
+              fetch("http://joucks.cn:3344/api/getUserGoods?page=" + j, {
+                  method: "GET",
+                  headers: {
+                      'Cookie': cookie,
+                  }
+              }).then(function (response) {
+                  return response.json()
+              }).then(function (res) {
+                  for (var i = 0; i < res.data.length; i++) {
+                      if(res.data[i].goods != null){
+                          var goods = res.data[i].goods;
+                          if (goods.name === '红药水') {
+                              useGoodsToUser(res.data[i]._id);
+                              redFlag = false;
+                          }
+                          if (goods.name.indexOf("鉴") > -1) {
+                              var sell_jsons = []
+                              var sell_json = {}
+                              sell_json["id"] = res.data[i]._id
+                              sell_json["count"] = res.data[i].count + ""
+                              sell_json["name"] = goods.name
+                              sell_json["style"] = goods.style
+                              sell_jsons.push(sell_json)
+                              var json = JSON.stringify(sell_jsons)
+                              console.log("出售：" + goods.name + "," + res.data[i].count + "件")
+                              sellGoods(json)
+                          }
+                      }
+                  }
+              })
+         }
+         if(redFlag){
+             byGoodsToMyUser();
+         }
+    })
+}
+
+
+// 使用红药水
+function useGoodsToUser(id) {
+    fetch("http://joucks.cn:3344/api/useGoodsToUser", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            'Cookie': cookie,
+        },
+        body: 'ugid=' + id
+    }).then(function (response) {
+    }).then(function () {
+        console.log('体力加100点')
+    })
+}
+
+// 买红药水
+function byGoodsToMyUser() {
+    fetch("http://joucks.cn:3344/api/byGoodsToMyUser", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            'Cookie': cookie,
+        },
+        body: 'gid=5dbfcc8cd9b8c0272471e2bf'
+    }).then(function (response) {
+    }).then(function () {
+    })
+}
+
+//升级
+function upgradeUserLevel() {
+    fetch('http://joucks.cn:3344/api/upgradeUserLevel', {
+        method: "POST",
+        headers: {
+            'Cookie': cookie,
+        },
+    }).then(function (response) {
+        return response.json()
+    }).then(function () {
+        console.log('升级成功');
+    })
+}
+
+//卖东西
+function sellGoods(json) {
+    fetch("http://joucks.cn:3344/api/sellGoods", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            'Cookie': cookie,
+        },
+        body: `sell_json=` + json + `&sell_type=wqp`
+    }).then(function (response) {
+        return response.json()
+    }).then(function (res) {
+        console.log(res)
+    })
+}
